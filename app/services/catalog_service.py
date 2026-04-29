@@ -2,31 +2,47 @@ from typing import List, Optional
 from app.domain.umkm import UMKM
 from app.repositories.interfaces.i_menu_item_repository import IMenuItemRepository
 from app.repositories.interfaces.i_umkm_repository import IUMKMRepository
+from app.repositories.interfaces.i_promotion_repository import IPromotionRepository
 from app.domain.menu_item import MenuItem
-from app.schemas.menu_item_schema import MenuItemCreateRequest
+from app.schemas.menu_item_schema import MenuItemCreateRequest, MenuItemResponse
 from app.core.exceptions import NotFoundError, PermissionDeniedError, BusinessRuleViolationError
 
 class CatalogService:
-    def __init__(self, menu_repo: IMenuItemRepository, umkm_repo: IUMKMRepository):
+    def __init__(self, menu_repo: IMenuItemRepository, umkm_repo: IUMKMRepository, promo_repo: IPromotionRepository):
         self._menu_repo = menu_repo
         self._umkm_repo = umkm_repo
+        self._promo_repo = promo_repo
 
-    async def search_products(self, keyword: Optional[str] = None, category: Optional[str] = None) -> List[MenuItem]:
-        return await self._menu_repo.search(keyword=keyword, category=category)
+    async def search_products(self, keyword: str, category: str):
+        """Mencari produk dan menyisipkan data promo aktif jika ada (US-C02)."""
+        products = await self._menu_repo.search(keyword, category)
+        
+        results = []
+        for p in products:
+            promos = await self._promo_repo.find_active_by_menu_item(p.id)
+            active_promo = promos[0] if promos else None
+            
+            results.append(MenuItemResponse.from_domain(p, active_promo))
+            
+        return results
 
-    async def get_umkm_menu(self, umkm_id: int) -> List[MenuItem]:
-        umkm = await self._umkm_repo.find_by_id(umkm_id)
-        if not umkm:
-            raise NotFoundError("Toko UMKM tidak ditemukan.")
-        return await self._menu_repo.find_by_umkm(umkm_id)
+    async def get_umkm_menu(self, umkm_id: int):
+        """Melihat menu UMKM lengkap dengan info promo (US-C01)."""
+        products = await self._menu_repo.find_by_umkm(umkm_id)
+        
+        results = []
+        for p in products:
+            promos = await self._promo_repo.find_active_by_menu_item(p.id)
+            active_promo = promos[0] if promos else None
+            results.append(MenuItemResponse.from_domain(p, active_promo))
+            
+        return results
 
     async def add_product(self, owner_id: int, request: MenuItemCreateRequest) -> MenuItem:
-        # 1. Cari UMKM milik penjual yang sedang login
         umkm = await self._umkm_repo.find_by_owner(owner_id)
         if not umkm:
             raise BusinessRuleViolationError("Anda harus mendaftarkan toko UMKM terlebih dahulu sebelum menambah produk.")
         
-        # 2. Buat objek domain produk baru
         new_item = MenuItem(
             umkm_id=umkm.id,
             name=request.name,
@@ -43,7 +59,6 @@ class CatalogService:
         if not item:
             raise NotFoundError("Produk tidak ditemukan.")
             
-        # Validasi keamanan: Pastikan produk ini benar milik penjual yang sedang login
         umkm = await self._umkm_repo.find_by_id(item.umkm_id)
         if not umkm or not umkm.is_owned_by(owner_id):
             raise PermissionDeniedError("Anda tidak memiliki akses untuk mengubah produk ini.")
@@ -63,7 +78,6 @@ class CatalogService:
         if not umkm or not umkm.is_owned_by(owner_id):
             raise PermissionDeniedError("Anda tidak berhak menghapus produk ini.")
             
-        # Menerapkan Soft Delete memanggil method domain
         item.deactivate_product()
         return await self._menu_repo.update(item)
     
@@ -72,12 +86,10 @@ class CatalogService:
         if not item:
             raise NotFoundError("Produk tidak ditemukan.")
             
-        # Validasi keamanan: Pastikan produk ini benar milik penjual yang sedang login
         umkm = await self._umkm_repo.find_by_id(item.umkm_id)
         if not umkm or not umkm.is_owned_by(owner_id):
             raise PermissionDeniedError("Anda tidak berhak mengaktifkan produk ini.")
             
-        # Memanggil method domain untuk mengubah is_active = True
         item.activate_product()
         return await self._menu_repo.update(item)
     

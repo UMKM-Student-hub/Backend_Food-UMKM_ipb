@@ -21,15 +21,17 @@ class UserRepositoryImpl(IUserRepository):
         )
 
     async def find_by_id(self, user_id: int) -> Optional[User]:
-        result = await self.session.execute(select(UserORM).where(UserORM.id == user_id))
-        orm = result.scalar_one_or_none()
+        stmt = select(UserORM).where(UserORM.id == user_id)
+        result = await self.session.execute(stmt)
+        orm = result.scalar_one_or_none() 
         return self._to_domain(orm) if orm else None
 
     async def find_by_email(self, email: str) -> Optional[User]:
-        result = await self.session.execute(select(UserORM).where(UserORM.email == email))
-        orm = result.scalar_one_or_none()
+        stmt = select(UserORM).where(UserORM.email == email)
+        result = await self.session.execute(stmt)
+        orm = result.scalar_one_or_none() 
         return self._to_domain(orm) if orm else None
-
+    
     async def save(self, user: User) -> User:
         new_orm = UserORM(
             name=user.name,

@@ -2,8 +2,15 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from decimal import Decimal
 from app.domain.menu_item import ProductCategory
-from datetime import datetime
+from datetime import date, datetime
 from app.domain.menu_item import MenuItem
+from app.domain.promotion import DiscountType
+
+class MenuItemPromoInfo(BaseModel):
+    """Informasi ringkas promo untuk ditampilkan di kartu produk."""
+    discount_type: DiscountType
+    discount_value: Decimal
+    end_date: date
 
 class MenuItemCreateRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
@@ -24,10 +31,19 @@ class MenuItemResponse(BaseModel):
     photo_url: Optional[str]
     category: ProductCategory
     is_active: bool
+    active_promo: Optional[MenuItemPromoInfo] = None
     created_at: datetime
 
     @staticmethod
-    def from_domain(item: MenuItem) -> "MenuItemResponse":
+    def from_domain(item, active_promo=None) -> "MenuItemResponse":
+        promo_info = None
+        if active_promo:
+            promo_info = MenuItemPromoInfo(
+                discount_type=active_promo.discount_type,
+                discount_value=active_promo.discount_value,
+                end_date=active_promo.end_date
+            )
+            
         return MenuItemResponse(
             id=item.id,
             umkm_id=item.umkm_id,
@@ -38,5 +54,6 @@ class MenuItemResponse(BaseModel):
             photo_url=item.photo_url,
             category=item.category,
             is_active=item.is_active,
-            created_at=item.created_at
+            created_at=item.created_at,
+            active_promo=promo_info
         )

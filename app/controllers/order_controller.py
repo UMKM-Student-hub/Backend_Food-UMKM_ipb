@@ -8,6 +8,7 @@ from app.services.order_service import OrderService
 from app.repositories.impl.order_repository import OrderRepositoryImpl
 from app.repositories.impl.menu_item_repository import MenuItemRepositoryImpl
 from app.repositories.impl.umkm_repository import UMKMRepositoryImpl
+from app.repositories.impl.promotion_repository import PromotionRepositoryImpl
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -16,7 +17,8 @@ def get_order_service(db: AsyncSession = Depends(get_db)) -> OrderService:
     order_repo = OrderRepositoryImpl(db)
     menu_repo = MenuItemRepositoryImpl(db)
     umkm_repo = UMKMRepositoryImpl(db)
-    return OrderService(order_repo, menu_repo, umkm_repo)
+    promo_repo = PromotionRepositoryImpl(db)
+    return OrderService(order_repo, menu_repo, umkm_repo, promo_repo)
 
 def get_current_user_id(x_user_id: int = Header(..., description="Simulasi User ID yang sedang login")) -> int:
     """Dependency untuk mengambil User ID dari Header secara tersentralisasi."""

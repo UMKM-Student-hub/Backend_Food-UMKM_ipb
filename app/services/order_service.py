@@ -3,15 +3,23 @@ from typing import List
 from app.repositories.interfaces.i_order_repository import IOrderRepository
 from app.repositories.interfaces.i_menu_item_repository import IMenuItemRepository
 from app.repositories.interfaces.i_umkm_repository import IUMKMRepository
+from app.repositories.interfaces.i_promotion_repository import IPromotionRepository
 from app.domain.order import Order, OrderItem, OrderStatus
 from app.schemas.order_schema import OrderCreateRequest
 from app.core.exceptions import BusinessRuleViolationError, NotFoundError, PermissionDeniedError
 
 class OrderService:
-    def __init__(self, order_repo: IOrderRepository, menu_repo: IMenuItemRepository, umkm_repo: IUMKMRepository):
+    def __init__(
+        self, 
+        order_repo: IOrderRepository, 
+        menu_repo: IMenuItemRepository, 
+        umkm_repo: IUMKMRepository,
+        promo_repo: IPromotionRepository
+    ):
         self._order_repo = order_repo
         self._menu_repo = menu_repo
         self._umkm_repo = umkm_repo
+        self._promo_repo = promo_repo
 
     async def place_order(self, buyer_id: int, request: OrderCreateRequest) -> Order:
         domain_items = []
@@ -25,10 +33,17 @@ class OrderService:
             menu_item.reduce_stock(req_item.quantity)
             await self._menu_repo.update(menu_item)
 
+            final_unit_price = menu_item.price
+            
+            active_promos = await self._promo_repo.find_active_by_menu_item(menu_item.id)
+            if active_promos:
+                promo = active_promos[0] 
+                final_unit_price = promo.calculate_discounted_price(menu_item.price)
+
             order_item = OrderItem(
                 menu_item_id=menu_item.id,
                 menu_name=menu_item.name,
-                unit_price=menu_item.price,
+                unit_price=final_unit_price,
                 quantity=req_item.quantity,
                 notes=req_item.notes or ""
             )

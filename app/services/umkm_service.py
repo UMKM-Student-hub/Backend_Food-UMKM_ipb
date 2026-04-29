@@ -8,7 +8,6 @@ class UMKMService:
         self._umkm_repo = umkm_repo
 
     async def register_umkm(self, owner_id: int, request: UMKMCreateRequest) -> UMKM:
-        # Aturan Bisnis: 1 Penjual = 1 UMKM
         existing_umkm = await self._umkm_repo.find_by_owner(owner_id)
         if existing_umkm:
             raise BusinessRuleViolationError("Satu akun hanya boleh mendaftarkan satu UMKM.")
@@ -26,11 +25,9 @@ class UMKMService:
         if not umkm:
             raise NotFoundError("Toko UMKM tidak ditemukan.")
             
-        # Aturan Bisnis: Hanya pemilik asli yang boleh mengubah status
         if not umkm.is_owned_by(requester_id):
             raise PermissionDeniedError("Anda tidak memiliki akses untuk mengubah toko ini.")
 
-        # Aturan Bisnis: Memanggil metode domain
         if umkm.is_open:
             umkm.close_store()
         else:

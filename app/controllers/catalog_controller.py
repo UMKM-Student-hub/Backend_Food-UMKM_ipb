@@ -3,10 +3,12 @@ from fastapi import APIRouter, Depends, Query, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from app.core.database import get_db
+from app.core.dependencies import get_current_user_id
 from app.schemas.menu_item_schema import MenuItemCreateRequest, MenuItemResponse
 from app.services.catalog_service import CatalogService
 from app.repositories.impl.menu_item_repository import MenuItemRepositoryImpl
 from app.repositories.impl.umkm_repository import UMKMRepositoryImpl
+from app.repositories.impl.promotion_repository import PromotionRepositoryImpl
 from app.schemas.umkm_schema import UMKMResponse
 
 router = APIRouter(prefix="/products", tags=["Catalog"])
@@ -14,10 +16,8 @@ router = APIRouter(prefix="/products", tags=["Catalog"])
 def get_catalog_service(db: AsyncSession = Depends(get_db)) -> CatalogService:
     menu_repo = MenuItemRepositoryImpl(db)
     umkm_repo = UMKMRepositoryImpl(db)
-    return CatalogService(menu_repo=menu_repo, umkm_repo=umkm_repo)
-
-def get_current_user_id(x_user_id: int = Header(..., description="Simulasi User ID yang sedang login")) -> int:
-    return x_user_id
+    promo_repo = PromotionRepositoryImpl(db)
+    return CatalogService(menu_repo=menu_repo, umkm_repo=umkm_repo, promo_repo=promo_repo)
 
 @router.get("/search", response_model=List[MenuItemResponse])
 async def search_products(
@@ -26,7 +26,7 @@ async def search_products(
     service: CatalogService = Depends(get_catalog_service)
 ):
     items = await service.search_products(keyword=keyword, category=category)
-    return [MenuItemResponse.from_domain(item) for item in items]
+    return items
 
 @router.get("/umkm/{umkm_id}", response_model=List[MenuItemResponse])
 async def get_umkm_menu(
@@ -34,7 +34,7 @@ async def get_umkm_menu(
     service: CatalogService = Depends(get_catalog_service)
 ):
     items = await service.get_umkm_menu(umkm_id)
-    return [MenuItemResponse.from_domain(item) for item in items]
+    return items
 
 @router.post("/", response_model=MenuItemResponse)
 async def add_product(
@@ -79,16 +79,6 @@ async def list_all_umkm(
 ):
     umkms = await service.list_all_umkm()
     return [UMKMResponse.from_domain(u) for u in umkms]
-
-@router.get("/{id}", response_model=MenuItemResponse)
-async def get_product_detail(
-    id: int,
-    service: CatalogService = Depends(get_catalog_service)
-):
-    item = await service._menu_repo.find_by_id(id) # Langsung akses repo atau tambahkan method di service
-    if not item:
-        raise NotFoundError("Produk tidak ditemukan.")
-    return MenuItemResponse.from_domain(item)
 
 @router.get("/{item_id}", response_model=MenuItemResponse)
 async def get_product_detail(

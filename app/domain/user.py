@@ -19,15 +19,18 @@ class User:
     id: Optional[int] = None
     created_at: Optional[datetime] = None
 
-    def is_valid_email(self) -> bool:
-        """Memvalidasi format email dasar."""
-        pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
-        return re.match(pattern, self.email) is not None
-
-    def has_role(self, target_role: UserRole) -> bool:
-        """Mengecek apakah user memiliki role tertentu."""
-        return self.role == target_role
-
-    def validate_before_save(self) -> None:
-        if not self.is_valid_email():
+    def validate(self) -> None:
+        """Memvalidasi aturan bisnis untuk User (US-A01)."""
+        if not self.is_valid_email(self.email):
             raise BusinessRuleViolationError("Format email tidak valid.")
+        if len(self.name) < 3:
+            raise BusinessRuleViolationError("Nama pengguna minimal 3 karakter.")
+
+    @staticmethod
+    def is_valid_email(email: str) -> bool:
+        """Pengecekan Regex untuk format email."""
+        pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+        return bool(re.match(pattern, email))
+
+    def has_role(self, expected_role: UserRole) -> bool:
+        return self.role == expected_role
