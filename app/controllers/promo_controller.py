@@ -5,6 +5,7 @@ from typing import List
 from app.core.database import get_db
 from app.schemas.promo_schema import PromoCreateRequest, PromoResponse
 from app.services.promo_service import PromoService
+from app.core.dependencies import get_current_user_id
 from app.repositories.impl.promotion_repository import PromotionRepositoryImpl
 from app.repositories.impl.menu_item_repository import MenuItemRepositoryImpl
 
@@ -14,10 +15,6 @@ def get_promo_service(db: AsyncSession = Depends(get_db)) -> PromoService:
     promo_repo = PromotionRepositoryImpl(db)
     menu_repo = MenuItemRepositoryImpl(db)
     return PromoService(promo_repo, menu_repo)
-
-def get_current_user_id(x_user_id: int = Header(..., description="ID User yang login")) -> int:
-    """Simulasi dependency Auth (akan diganti JWT nanti)."""
-    return x_user_id
 
 @router.get("/active", response_model=List[PromoResponse])
 async def get_active_promos(service: PromoService = Depends(get_promo_service)):

@@ -5,6 +5,7 @@ from typing import List
 from app.core.database import get_db
 from app.schemas.order_schema import OrderCreateRequest, OrderResponse
 from app.services.order_service import OrderService
+from app.core.dependencies import get_current_user_id
 from app.repositories.impl.order_repository import OrderRepositoryImpl
 from app.repositories.impl.menu_item_repository import MenuItemRepositoryImpl
 from app.repositories.impl.umkm_repository import UMKMRepositoryImpl
@@ -19,10 +20,6 @@ def get_order_service(db: AsyncSession = Depends(get_db)) -> OrderService:
     umkm_repo = UMKMRepositoryImpl(db)
     promo_repo = PromotionRepositoryImpl(db)
     return OrderService(order_repo, menu_repo, umkm_repo, promo_repo)
-
-def get_current_user_id(x_user_id: int = Header(..., description="Simulasi User ID yang sedang login")) -> int:
-    """Dependency untuk mengambil User ID dari Header secara tersentralisasi."""
-    return x_user_id
 
 @router.post("/", response_model=OrderResponse)
 async def create_order(

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.schemas.umkm_schema import UMKMCreateRequest, UMKMResponse
 from app.services.umkm_service import UMKMService
+from app.core.dependencies import get_current_user_id
 from app.repositories.impl.umkm_repository import UMKMRepositoryImpl
 
 router = APIRouter(prefix="/umkm", tags=["UMKM"])
@@ -10,9 +11,6 @@ router = APIRouter(prefix="/umkm", tags=["UMKM"])
 def get_umkm_service(db: AsyncSession = Depends(get_db)) -> UMKMService:
     repo = UMKMRepositoryImpl(db)
     return UMKMService(repo)
-
-def get_current_user_id(x_user_id: int = Header(..., description="Simulasi User ID yang sedang login")) -> int:
-    return x_user_id
 
 @router.post("/", response_model=UMKMResponse)
 async def create_umkm(
