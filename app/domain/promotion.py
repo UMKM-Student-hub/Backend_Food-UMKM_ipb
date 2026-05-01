@@ -19,6 +19,7 @@ class Promotion:
     start_date: date
     end_date: date
     is_active: bool = True
+    photo_url: Optional[str] = None
     id: Optional[int] = None
 
     def validate(self) -> None:

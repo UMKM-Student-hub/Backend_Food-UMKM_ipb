@@ -11,6 +11,7 @@ class PromoCreateRequest(BaseModel):
     discount_value: Decimal = Field(..., gt=0)
     start_date: date
     end_date: date
+    photo_url: Optional[str] = None
 
     @model_validator(mode='after')
     def validate_dates_and_discount(self) -> 'PromoCreateRequest':
@@ -30,6 +31,7 @@ class PromoResponse(BaseModel):
     start_date: date
     end_date: date
     is_active: bool
+    photo_url: Optional[str] = None
 
     @staticmethod
     def from_domain(promo) -> "PromoResponse":

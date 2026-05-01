@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Boolean, Date, DateTime, ForeignKey, Numeric, Enum as SQLEnum, CheckConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column
+from typing import Optional
 from app.core.database import Base
 from app.domain.promotion import DiscountType
 
@@ -11,6 +12,7 @@ class PromotionORM(Base):
     umkm_id: Mapped[int] = mapped_column(ForeignKey("umkm.id", ondelete="CASCADE"), index=True)
     menu_item_id: Mapped[int] = mapped_column(ForeignKey("menu_items.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    photo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     discount_type: Mapped[DiscountType] = mapped_column(SQLEnum(DiscountType), nullable=False)
     discount_value: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     start_date: Mapped[Date] = mapped_column(Date, nullable=False)

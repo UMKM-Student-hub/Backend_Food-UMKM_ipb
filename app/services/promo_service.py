@@ -28,6 +28,7 @@ class PromoService:
             umkm_id=owner_id, 
             menu_item_id=request.menu_item_id,
             name=request.name,
+            photo_url=request.photo_url,
             discount_type=request.discount_type,
             discount_value=request.discount_value,
             start_date=request.start_date,
