@@ -1,3 +1,4 @@
+# app/controllers/catalog_controller.py
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
@@ -23,27 +24,41 @@ def get_catalog_service(db: AsyncSession = Depends(get_db)) -> CatalogService:
 
 @router.get("/", response_model=List[UMKMResponse])
 async def list_all_umkm(service: CatalogService = Depends(get_catalog_service)):
-    """Menampilkan semua UMKM di katalog (Bisa diakses Guest)."""
+    """Menampilkan semua UMKM di katalog."""
     umkms = await service.list_all_umkm()
     return [UMKMResponse.from_domain(u) for u in umkms]
 
-@router.get("/search", response_model=List[MenuItemResponse])
-async def search_products(
-    keyword: Optional[str] = Query(None, description="Cari berdasarkan nama menu"),
-    category: Optional[str] = Query(None, description="Filter berdasarkan kategori"),
+@router.get("/store/{umkm_id}", response_model=UMKMResponse)
+async def get_umkm_profile(
+    umkm_id: int,
     service: CatalogService = Depends(get_catalog_service)
 ):
-    """Mencari produk (Bisa diakses Guest)."""
-    items = await service.search_products(keyword=keyword, category=category)
-    return items
+    """Mendapatkan profil spesifik 1 kantin/UMKM (Untuk header halaman)."""
+    try:
+        umkm = await service.get_umkm_detail(umkm_id) 
+        return UMKMResponse.from_domain(umkm)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 @router.get("/umkm/{umkm_id}", response_model=List[MenuItemResponse])
 async def get_umkm_menu(
     umkm_id: int,
+    keyword: Optional[str] = Query(None, description="Cari menu di kantin ini"),
+    category: Optional[str] = Query(None, description="Filter kategori menu"),
     service: CatalogService = Depends(get_catalog_service)
 ):
-    """Melihat menu dari satu UMKM spesifik (Bisa diakses Guest)."""
-    items = await service.get_umkm_menu(umkm_id)
+    """Melihat menu dari satu UMKM spesifik dengan dukungan search bar & kategori."""
+    items = await service.get_umkm_menu(umkm_id, keyword=keyword, category=category)
+    return items
+
+@router.get("/search", response_model=List[MenuItemResponse])
+async def search_products_global(
+    keyword: Optional[str] = Query(None, description="Cari berdasarkan nama menu"),
+    category: Optional[str] = Query(None, description="Filter berdasarkan kategori"),
+    service: CatalogService = Depends(get_catalog_service)
+):
+    """Mencari produk secara global di seluruh kampus."""
+    items = await service.search_products(keyword=keyword, category=category)
     return items
 
 @router.get("/{item_id}", response_model=MenuItemResponse)
@@ -51,9 +66,12 @@ async def get_product_detail(
     item_id: int,
     service: CatalogService = Depends(get_catalog_service)
 ):
-    """Melihat detail satu produk (Bisa diakses Guest)."""
-    item = await service.get_product_detail(item_id)
-    return MenuItemResponse.from_domain(item)
+    """Melihat detail satu produk."""
+    try:
+        item = await service.get_product_detail(item_id)
+        return MenuItemResponse.from_domain(item)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 @router.post("/", response_model=MenuItemResponse, status_code=status.HTTP_201_CREATED)
 async def add_product(
@@ -61,7 +79,6 @@ async def add_product(
     seller_payload: dict = Depends(require_seller), 
     service: CatalogService = Depends(get_catalog_service)
 ):
-    """Menambahkan produk baru (KHUSUS PENJUAL)."""
     owner_id = int(seller_payload.get("sub"))
     item = await service.add_product(owner_id=owner_id, request=request)
     return MenuItemResponse.from_domain(item)
@@ -73,7 +90,6 @@ async def update_stock(
     seller_payload: dict = Depends(require_seller),
     service: CatalogService = Depends(get_catalog_service)
 ):
-    """Memperbarui stok produk (KHUSUS PENJUAL)."""
     owner_id = int(seller_payload.get("sub"))
     item = await service.update_stock(owner_id=owner_id, item_id=item_id, new_stock=new_stock)
     return MenuItemResponse.from_domain(item)
@@ -84,7 +100,6 @@ async def delete_product(
     seller_payload: dict = Depends(require_seller),
     service: CatalogService = Depends(get_catalog_service)
 ):
-    """Menghapus produk (KHUSUS PENJUAL)."""
     owner_id = int(seller_payload.get("sub"))
     item = await service.delete_product(owner_id=owner_id, item_id=item_id)
     return MenuItemResponse.from_domain(item)
@@ -95,7 +110,6 @@ async def reactivate_product(
     seller_payload: dict = Depends(require_seller),
     service: CatalogService = Depends(get_catalog_service)
 ):
-    """Mengaktifkan kembali produk yang sudah dihapus/nonaktif (KHUSUS PENJUAL)."""
     owner_id = int(seller_payload.get("sub"))
     item = await service.reactivate_product(owner_id=owner_id, item_id=item_id)
     return MenuItemResponse.from_domain(item)
