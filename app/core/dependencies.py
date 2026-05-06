@@ -1,12 +1,13 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from app.core.config import settings
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+security = HTTPBearer()
 
-async def get_current_user_token(token: str = Depends(oauth2_scheme)) -> dict:
+async def get_current_user_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     """Satpam yang memverifikasi keaslian dan masa berlaku JWT."""
+    token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         return payload
