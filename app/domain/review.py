@@ -14,7 +14,6 @@ class Review:
     created_at: Optional[datetime] = None
 
     def validate(self) -> None:
-        """Memvalidasi aturan bisnis untuk ulasan (US-R01)."""
         if not (1 <= self.rating <= 5):
             raise BusinessRuleViolationError("Rating wajib diisi dengan nilai antara 1 hingga 5.")
         

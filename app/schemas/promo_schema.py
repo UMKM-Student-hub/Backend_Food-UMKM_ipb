@@ -44,5 +44,6 @@ class PromoResponse(BaseModel):
             discount_value=promo.discount_value,
             start_date=promo.start_date,
             end_date=promo.end_date,
-            is_active=promo.is_active
+            is_active=promo.is_active,
+            photo_url=promo.photo_url
         )

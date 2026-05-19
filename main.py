@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
 from app.api.router import api_router
 from app.core.exceptions import NotFoundError, BusinessRuleViolationError, PermissionDeniedError
 from fastapi.responses import JSONResponse
@@ -13,6 +14,8 @@ app = FastAPI(
     title=os.getenv("APP_NAME", "UniBites API"),
     version=os.getenv("APP_VERSION", "1.0.0")
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 async def root():

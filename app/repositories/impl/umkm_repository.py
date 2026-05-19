@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy import select
 from app.repositories.interfaces.i_umkm_repository import IUMKMRepository
 from app.domain.umkm import UMKM
 from app.orm_models.umkm import UMKMORM
@@ -30,6 +30,10 @@ class UMKMRepositoryImpl(IUMKMRepository):
         orm = result.scalar_one_or_none()
         return self._to_domain(orm) if orm else None
 
+    async def find_all(self) -> List[UMKM]:
+        result = await self.session.execute(select(UMKMORM))
+        return [self._to_domain(orm) for orm in result.scalars()]
+
     async def save(self, umkm: UMKM) -> UMKM:
         new_orm = UMKMORM(
             owner_id=umkm.owner_id,
@@ -45,17 +49,16 @@ class UMKMRepositoryImpl(IUMKMRepository):
 
     async def update(self, umkm: UMKM) -> UMKM:
         result = await self.session.execute(select(UMKMORM).where(UMKMORM.id == umkm.id))
-        orm = result.scalar_one()
+        orm = result.scalar_one_or_none()
         
-        orm.name = umkm.name
-        orm.description = umkm.description
-        orm.location = umkm.location
-        orm.is_open = umkm.is_open
-        
-        await self.session.commit()
-        await self.session.refresh(orm)
-        return self._to_domain(orm)
-    
-    async def find_all(self) -> List[UMKM]:
-        result = await self.session.execute(select(UMKMORM))
-        return [self._to_domain(orm) for orm in result.scalars().all()]
+        if orm:
+            orm.name = umkm.name
+            orm.description = umkm.description
+            orm.location = umkm.location
+            orm.is_open = umkm.is_open
+            
+            await self.session.commit()
+            await self.session.refresh(orm)
+            return self._to_domain(orm)
+            
+        return umkm

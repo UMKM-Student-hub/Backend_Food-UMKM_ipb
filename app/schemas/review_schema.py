@@ -3,10 +3,10 @@ from typing import Optional
 from datetime import datetime
 
 class ReviewCreateRequest(BaseModel):
-    order_id: int = Field(..., description="ID Pesanan yang sudah selesai")
-    menu_item_id: int = Field(..., description="ID Menu yang dipesan")
-    rating: int = Field(..., ge=1, le=5, description="Rating bintang 1-5")
-    comment: Optional[str] = Field(None, description="Komentar opsional dari pembeli")
+    order_id: int = Field(..., ge=1)
+    menu_item_id: int = Field(..., ge=1)
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = None
 
 class ReviewResponse(BaseModel):
     id: int

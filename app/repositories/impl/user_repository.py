@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy import select
 from typing import Optional
 from app.repositories.interfaces.i_user_repository import IUserRepository
 from app.domain.user import User, UserRole
@@ -44,3 +44,17 @@ class UserRepositoryImpl(IUserRepository):
         await self.session.commit()
         await self.session.refresh(new_orm)
         return self._to_domain(new_orm)
+
+    async def update(self, user: User) -> User:
+        stmt = select(UserORM).where(UserORM.id == user.id)
+        result = await self.session.execute(stmt)
+        orm = result.scalar_one_or_none()
+
+        if orm:
+            orm.name = user.name
+            orm.phone = user.phone
+            await self.session.commit()
+            await self.session.refresh(orm)
+            return self._to_domain(orm)
+            
+        return user

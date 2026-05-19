@@ -30,26 +30,21 @@ class ReviewRepositoryImpl(IReviewRepository):
             comment=review.comment
         )
         self.session.add(orm)
-        await self.session.commit() 
-        
-        await self.session.refresh(orm) 
-        
+        await self.session.commit()
+        await self.session.refresh(orm)
         return self._to_domain(orm)
 
-    async def exists_by_order_id(self, order_id: int) -> bool:
-        """Mengecek apakah pesanan ini sudah pernah diulas."""
-        stmt = select(exists().where(ReviewORM.order_id == order_id))
+    async def exists_by_order_item(self, order_id: int, menu_item_id: int) -> bool:
+        stmt = select(exists().where(ReviewORM.order_id == order_id).where(ReviewORM.menu_item_id == menu_item_id))
         result = await self.session.execute(stmt)
-        return result.scalar()
+        return bool(result.scalar())
 
     async def find_by_menu_item(self, menu_item_id: int) -> List[Review]:
-        """US-R02: Mengambil ulasan per produk, diurutkan dari yang terbaru."""
         stmt = select(ReviewORM).where(ReviewORM.menu_item_id == menu_item_id).order_by(ReviewORM.created_at.desc())
         result = await self.session.execute(stmt)
         return [self._to_domain(orm) for orm in result.scalars()]
 
     async def find_by_umkm(self, umkm_id: int) -> List[Review]:
-        """US-R03: Mengambil ulasan per UMKM menggunakan operasi JOIN."""
         stmt = (
             select(ReviewORM)
             .join(MenuItemORM, ReviewORM.menu_item_id == MenuItemORM.id)
@@ -60,8 +55,7 @@ class ReviewRepositoryImpl(IReviewRepository):
         return [self._to_domain(orm) for orm in result.scalars()]
     
     async def calculate_average_rating(self, menu_item_id: int) -> float:
-        """Menghitung rata-rata rating produk langsung di level database."""
         stmt = select(func.avg(ReviewORM.rating)).where(ReviewORM.menu_item_id == menu_item_id)
         result = await self.session.execute(stmt)
-        average = result.scalar()
-        return float(average) if average else 0.0
+        avg = result.scalar()
+        return float(avg) if avg else 0.0

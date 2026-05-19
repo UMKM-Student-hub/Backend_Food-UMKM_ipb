@@ -8,4 +8,6 @@ __pycache__/
 *.pyc
 
 # Database
-*.sqlite3
+*.sqlite3static/uploads/payments/*
+
+static/

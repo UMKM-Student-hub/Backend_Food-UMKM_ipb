@@ -1,8 +1,14 @@
-from typing import List
+import os
+import shutil
+from uuid import uuid4
+from typing import List, Optional
+from datetime import date
+from decimal import Decimal
+from fastapi import UploadFile
+
 from app.repositories.interfaces.i_promotion_repository import IPromotionRepository
 from app.repositories.interfaces.i_menu_item_repository import IMenuItemRepository
 from app.domain.promotion import Promotion
-from app.schemas.promo_schema import PromoCreateRequest
 from app.core.exceptions import NotFoundError, BusinessRuleViolationError
 
 class PromoService:
@@ -11,38 +17,64 @@ class PromoService:
         self._menu_repo = menu_repo
 
     async def list_active_promos(self) -> List[Promotion]:
-        """US-P01: Mengambil semua promo yang sedang aktif."""
         return await self._promo_repo.find_active()
 
     async def get_promos_by_umkm(self, owner_id: int) -> List[Promotion]:
-        """US-P02 (opsional): Mengambil daftar promo buatan UMKM ini."""
         return await self._promo_repo.find_by_umkm(owner_id)
 
-    async def create_promo(self, owner_id: int, request: PromoCreateRequest) -> Promotion:
-        """US-P03: Membuat promo baru."""
-        menu_item = await self._menu_repo.find_by_id(request.menu_item_id)
+    async def create_promo_with_file(
+        self, 
+        owner_id: int, 
+        menu_item_id: int, 
+        name: str, 
+        discount_type: str, 
+        discount_value: Decimal, 
+        start_date: date, 
+        end_date: date, 
+        photo: Optional[UploadFile]
+    ) -> Promotion:
+        menu_item = await self._menu_repo.find_by_id(menu_item_id)
         if not menu_item:
             raise NotFoundError("Menu item tidak ditemukan.")
         
+        photo_url = None
+        if photo and photo.filename:
+            file_ext = os.path.splitext(photo.filename)[1].lower()
+            allowed_exts = {".jpg", ".jpeg", ".png", ".webp"}
+            if file_ext not in allowed_exts:
+                raise BusinessRuleViolationError("Format gambar tidak didukung.")
+                
+            unique_name = f"{uuid4()}{file_ext}"
+            directory = "static/uploads/promos"
+            path = os.path.join(directory, unique_name)
+            
+            os.makedirs(directory, exist_ok=True)
+            with open(path, "wb") as buffer:
+                shutil.copyfileobj(photo.file, buffer)
+            
+            photo_url = f"/{path}".replace("\\", "/")
+
         promo = Promotion(
             umkm_id=owner_id, 
-            menu_item_id=request.menu_item_id,
-            name=request.name,
-            photo_url=request.photo_url,
-            discount_type=request.discount_type,
-            discount_value=request.discount_value,
-            start_date=request.start_date,
-            end_date=request.end_date
+            menu_item_id=menu_item_id,
+            name=name,
+            photo_url=photo_url,
+            discount_type=discount_type,
+            discount_value=discount_value,
+            start_date=start_date,
+            end_date=end_date
         )
         promo.validate()
         
         return await self._promo_repo.save(promo)
 
     async def deactivate_promo(self, promo_id: int, owner_id: int) -> Promotion:
-        """US-P04: Menonaktifkan promo sebelum tanggalnya kedaluwarsa."""
         promo = await self._promo_repo.find_by_id(promo_id)
         if not promo:
             raise NotFoundError("Promo tidak ditemukan.")
         
-        promo.deactivate()
+        if promo.umkm_id != owner_id:
+            raise BusinessRuleViolationError("Anda tidak memiliki akses untuk promo ini.")
+            
+        promo.is_active = False
         return await self._promo_repo.update(promo)

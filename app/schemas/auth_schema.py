@@ -1,10 +1,11 @@
 from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 from app.domain.user import UserRole
 
 class RegisterRequest(BaseModel):
     name: str = Field(..., min_length=3, max_length=100)
     email: EmailStr
-    password: str = Field(..., min_length=6, description="Minimal 6 karakter")
+    password: str = Field(..., min_length=6)
     phone: str = Field(..., max_length=20)
     role: UserRole
 
@@ -31,3 +32,20 @@ class UserResponse(BaseModel):
             email=user.email,
             role=user.role
         )
+
+class ProfileResponse(BaseModel):
+    umkmName: str
+    email: str
+    ownerName: str
+    phone: str
+    location: str
+
+class ProfileUpdateRequest(BaseModel):
+    umkmName: Optional[str] = None
+    ownerName: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+
+class UserUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None

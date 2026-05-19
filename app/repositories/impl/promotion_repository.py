@@ -28,11 +28,14 @@ class PromotionRepositoryImpl(IPromotionRepository):
     async def find_by_id(self, promo_id: int) -> Optional[Promotion]:
         stmt = select(PromotionORM).where(PromotionORM.id == promo_id)
         result = await self.session.execute(stmt)
-        orm = result.scalar_opt()
-        return self._to_domain(orm) if orm else None
+        orm = result.scalar_one_or_none()
+        
+        if not orm:
+            return None
+            
+        return self._to_domain(orm)
 
     async def find_active(self) -> List[Promotion]:
-        """Query untuk mendapatkan promo yang sedang berlangsung hari ini."""
         today = date.today()
         stmt = select(PromotionORM).where(
             PromotionORM.is_active == True,
@@ -81,9 +84,17 @@ class PromotionRepositoryImpl(IPromotionRepository):
     async def update(self, promo: Promotion) -> Promotion:
         stmt = select(PromotionORM).where(PromotionORM.id == promo.id)
         result = await self.session.execute(stmt)
-        orm = result.scalar_one()
+        orm = result.scalar_one_or_none()
 
-        orm.is_active = promo.is_active
-        
-        await self.session.commit() 
+        if orm:
+            orm.name = promo.name
+            orm.photo_url = promo.photo_url
+            orm.discount_type = promo.discount_type
+            orm.discount_value = promo.discount_value
+            orm.start_date = promo.start_date
+            orm.end_date = promo.end_date
+            orm.is_active = promo.is_active
+            
+            await self.session.commit() 
+            
         return promo
