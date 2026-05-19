@@ -1,11 +1,15 @@
+import json
+import os
+import uuid
+from datetime import datetime
 from typing import List
+from fastapi import UploadFile
 
 from app.repositories.interfaces.i_order_repository import IOrderRepository
 from app.repositories.interfaces.i_menu_item_repository import IMenuItemRepository
 from app.repositories.interfaces.i_umkm_repository import IUMKMRepository
 from app.repositories.interfaces.i_promotion_repository import IPromotionRepository
 from app.domain.order import Order, OrderItem, OrderStatus
-from app.schemas.order_schema import OrderCreateRequest
 from app.core.exceptions import BusinessRuleViolationError, NotFoundError, PermissionDeniedError
 
 class OrderService:
@@ -21,16 +25,57 @@ class OrderService:
         self._umkm_repo = umkm_repo
         self._promo_repo = promo_repo
 
-    async def place_order(self, buyer_id: int, request: OrderCreateRequest) -> Order:
+    async def place_order(
+        self, 
+        buyer_id: int, 
+        umkm_id: int, 
+        items_json: str, 
+        payment_method: str, 
+        notes: str, 
+        pickup_schedule: str, 
+        payment_proof: UploadFile
+    ) -> Order:
+        try:
+            parsed_items = json.loads(items_json)
+        except json.JSONDecodeError:
+            raise BusinessRuleViolationError("Format keranjang tidak valid.")
+
+        if not parsed_items:
+            raise BusinessRuleViolationError("Keranjang belanja tidak boleh kosong.")
+
+        if payment_method == "Gopay" and not payment_proof:
+            raise BusinessRuleViolationError("Bukti pembayaran Gopay wajib diunggah.")
+
+        proof_url = None
+        if payment_proof:
+            upload_dir = "static/uploads/payments"
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            ext = payment_proof.filename.split(".")[-1]
+            unique_filename = f"{uuid.uuid4().hex}.{ext}"
+            file_path = os.path.join(upload_dir, unique_filename)
+            
+            with open(file_path, "wb") as f:
+                f.write(await payment_proof.read())
+            
+            proof_url = f"/{file_path}"
+
         domain_items = []
         total_price = 0
 
-        for req_item in request.items:
-            menu_item = await self._menu_repo.find_by_id(req_item.menu_item_id)
-            if not menu_item:
-                raise NotFoundError(f"Menu item {req_item.menu_item_id} tidak ditemukan.")
+        for req_item in parsed_items:
+            menu_item_id = req_item.get("menu_item_id")
+            quantity = req_item.get("quantity")
+            item_notes = req_item.get("note", "")
 
-            menu_item.reduce_stock(req_item.quantity)
+            if not menu_item_id or not quantity or quantity <= 0:
+                raise BusinessRuleViolationError("Data item pesanan tidak lengkap atau tidak valid.")
+
+            menu_item = await self._menu_repo.find_by_id(menu_item_id)
+            if not menu_item:
+                raise NotFoundError(f"Menu item {menu_item_id} tidak ditemukan.")
+
+            menu_item.reduce_stock(quantity)
             await self._menu_repo.update(menu_item)
 
             final_unit_price = menu_item.price
@@ -44,19 +89,28 @@ class OrderService:
                 menu_item_id=menu_item.id,
                 menu_name=menu_item.name,
                 unit_price=final_unit_price,
-                quantity=req_item.quantity,
-                notes=req_item.notes or ""
+                quantity=quantity,
+                notes=item_notes
             )
             domain_items.append(order_item)
             total_price += order_item.calculate_subtotal()
 
+        dt_pickup = None
+        if pickup_schedule:
+            try:
+                dt_pickup = datetime.fromisoformat(pickup_schedule.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+
         new_order = Order(
             buyer_id=buyer_id,
-            umkm_id=request.umkm_id,
+            umkm_id=umkm_id,
             total_price=total_price,
             items=domain_items,
-            notes=request.notes,
-            pickup_schedule=request.pickup_schedule
+            notes=notes,
+            payment_method=payment_method,
+            payment_proof_url=proof_url,
+            pickup_schedule=dt_pickup
         )
 
         return await self._order_repo.save(new_order)

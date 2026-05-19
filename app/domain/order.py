@@ -36,6 +36,8 @@ class Order:
     pickup_schedule: Optional[datetime] = None
     queue_number: Optional[str] = None
     rejection_reason: Optional[str] = None
+    payment_method: str = "Bayar Ditempat"
+    payment_proof_url: Optional[str] = None
     id: Optional[int] = None
     created_at: Optional[datetime] = None
 
