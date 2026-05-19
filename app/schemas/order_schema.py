@@ -16,6 +16,7 @@ class OrderCreateRequest(BaseModel):
     pickup_schedule: datetime
 
 class OrderItemResponse(BaseModel):
+    menu_item_id: int
     menu_name: str
     unit_price: Decimal
     quantity: int
@@ -25,6 +26,7 @@ class OrderItemResponse(BaseModel):
     @staticmethod
     def from_domain(item) -> "OrderItemResponse":
         return OrderItemResponse(
+            menu_item_id=item.menu_item_id,
             menu_name=item.menu_name,
             unit_price=item.unit_price,
             quantity=item.quantity,
@@ -38,6 +40,8 @@ class OrderResponse(BaseModel):
     umkm_id: int
     status: OrderStatus
     total_price: Decimal
+    payment_method: str
+    payment_proof_url: Optional[str]
     items: List[OrderItemResponse]
     notes: str
     pickup_schedule: Optional[datetime]
@@ -53,6 +57,8 @@ class OrderResponse(BaseModel):
             umkm_id=order.umkm_id,
             status=order.status,
             total_price=order.total_price,
+            payment_method=order.payment_method,
+            payment_proof_url=order.payment_proof_url,
             items=[OrderItemResponse.from_domain(item) for item in order.items],
             notes=order.notes,
             pickup_schedule=order.pickup_schedule,
