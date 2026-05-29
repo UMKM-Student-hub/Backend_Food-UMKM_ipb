@@ -22,3 +22,7 @@ class IReviewRepository(ABC):
     @abstractmethod
     async def calculate_average_rating(self, menu_item_id: int) -> float:
         pass
+
+    @abstractmethod
+    async def find_by_buyer(self, buyer_id: int) -> List[Review]:
+        pass

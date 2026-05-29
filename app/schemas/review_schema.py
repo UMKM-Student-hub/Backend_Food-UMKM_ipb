@@ -16,6 +16,8 @@ class ReviewResponse(BaseModel):
     rating: int
     comment: Optional[str]
     created_at: datetime
+    buyer_name: Optional[str] = None
+    menu_name: Optional[str] = None
 
     @staticmethod
     def from_domain(review) -> "ReviewResponse":
@@ -26,5 +28,7 @@ class ReviewResponse(BaseModel):
             menu_item_id=review.menu_item_id,
             rating=review.rating,
             comment=review.comment,
-            created_at=review.created_at
+            created_at=review.created_at,
+            buyer_name=getattr(review, 'buyer_name', None),
+            menu_name=getattr(review, 'menu_name', None)
         )

@@ -48,3 +48,22 @@ async def get_my_umkm_reviews(
 ):
     reviews = await service.get_umkm_reviews(owner_id)
     return [ReviewResponse.from_domain(r) for r in reviews]
+
+@router.get("/umkm/{umkm_id}", response_model=List[ReviewResponse])
+async def get_umkm_public_reviews(
+    umkm_id: int,
+    service: ReviewService = Depends(get_review_service)
+):
+    try:
+        reviews = await service.get_umkm_public_reviews(umkm_id)
+        return [ReviewResponse.from_domain(r) for r in reviews]
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+@router.get("/my", response_model=List[ReviewResponse])
+async def get_my_reviews(
+    buyer_id: int = Depends(get_current_user_id),
+    service: ReviewService = Depends(get_review_service)
+):
+    reviews = await service.get_my_reviews(buyer_id)
+    return [ReviewResponse.from_domain(r) for r in reviews]

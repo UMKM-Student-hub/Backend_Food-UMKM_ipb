@@ -51,6 +51,17 @@ class ReviewService:
         if not umkm:
             raise NotFoundError("UMKM tidak ditemukan untuk akun ini.")
         return await self._review_repo.find_by_umkm(umkm.id)
+        
+    async def get_umkm_public_reviews(self, umkm_id: int) -> List[Review]:
+        umkm = await self._umkm_repo.find_by_id(umkm_id)
+        if not umkm:
+            raise NotFoundError(f"Kantin dengan ID {umkm_id} tidak ditemukan.")
+            
+        reviews = await self._review_repo.find_by_umkm(umkm_id)
+        return reviews if reviews else []
 
     async def get_product_average_rating(self, menu_item_id: int) -> float:
         return await self._review_repo.calculate_average_rating(menu_item_id)
+
+    async def get_my_reviews(self, buyer_id: int) -> List[Review]:
+        return await self._review_repo.find_by_buyer(buyer_id)
