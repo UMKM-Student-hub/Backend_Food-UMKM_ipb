@@ -26,9 +26,14 @@ class UMKMRepositoryImpl(IUMKMRepository):
         return self._to_domain(orm) if orm else None
 
     async def find_by_owner(self, owner_id: int) -> Optional[UMKM]:
-        result = await self.session.execute(select(UMKMORM).where(UMKMORM.owner_id == owner_id))
-        orm = result.scalar_one_or_none()
-        return self._to_domain(orm) if orm else None
+        stmt = select(UMKMORM).where(UMKMORM.owner_id == owner_id)
+        result = await self.session.execute(stmt)
+        orm = result.scalars().first()
+        
+        if not orm:
+            return None
+            
+        return self._to_domain(orm)
 
     async def find_all(self) -> List[UMKM]:
         result = await self.session.execute(select(UMKMORM))

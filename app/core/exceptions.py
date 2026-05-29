@@ -9,3 +9,7 @@ class BusinessRuleViolationError(Exception):
 class PermissionDeniedError(Exception):
     """Exception untuk pelanggaran hak akses (misal: mengedit toko orang lain)."""
     pass
+
+class DuplicateResourceError(Exception):
+    """Exception untuk sumber daya yang duplikat."""
+    pass
