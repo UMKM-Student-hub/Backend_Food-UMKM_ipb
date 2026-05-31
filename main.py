@@ -1,12 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 import os
 from dotenv import load_dotenv
-from fastapi.staticfiles import StaticFiles
 from app.api.router import api_router
 from app.core.exceptions import NotFoundError, BusinessRuleViolationError, PermissionDeniedError
-from fastapi.responses import JSONResponse
-from fastapi import Request
 
 load_dotenv()
 
@@ -15,6 +14,7 @@ app = FastAPI(
     version=os.getenv("APP_VERSION", "1.0.0")
 )
 
+os.makedirs("static/uploads/payments", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
@@ -23,7 +23,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "database_connection": "pending setup alembic"}
+    return {"status": "ok"}
 
 @app.exception_handler(NotFoundError)
 async def not_found_handler(request: Request, exc: NotFoundError):
@@ -39,9 +39,12 @@ async def permission_handler(request: Request, exc: PermissionDeniedError):
 
 app.include_router(api_router)
 
+raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+allowed_origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

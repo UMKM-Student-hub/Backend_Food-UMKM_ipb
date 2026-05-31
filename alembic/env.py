@@ -24,7 +24,12 @@ from app.orm_models.review import ReviewORM
 
 config = context.config
 
-database_url = os.getenv("DATABASE_URL")
+database_url = os.getenv("DATABASE_URL", "")
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif database_url.startswith("postgresql://") and "+asyncpg" not in database_url:
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
