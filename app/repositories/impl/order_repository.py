@@ -23,7 +23,7 @@ class OrderRepositoryImpl(IOrderRepository):
                     notes=item_orm.notes or ""
                 ))
         
-        return Order(
+        order_domain = Order(
             id=orm.id,
             buyer_id=orm.buyer_id,
             umkm_id=orm.umkm_id,
@@ -37,6 +37,14 @@ class OrderRepositoryImpl(IOrderRepository):
             created_at=orm.created_at,
             items=domain_items
         )
+        
+        # Ekstrak nama pembeli jika relasinya ditemukan
+        if hasattr(orm, 'buyer') and orm.buyer is not None:
+            order_domain.buyer_name = getattr(orm.buyer, 'name', None)
+            
+        order_domain.rejection_reason = orm.rejection_reason
+        
+        return order_domain
 
     async def save(self, order: Order) -> Order:
         new_order_orm = OrderORM(
@@ -67,18 +75,18 @@ class OrderRepositoryImpl(IOrderRepository):
         return await self.find_by_id(new_order_orm.id)
 
     async def find_by_id(self, order_id: int) -> Optional[Order]:
-        stmt = select(OrderORM).options(selectinload(OrderORM.items)).where(OrderORM.id == order_id)
+        stmt = select(OrderORM).options(selectinload(OrderORM.items), selectinload(OrderORM.buyer)).where(OrderORM.id == order_id)
         result = await self.session.execute(stmt)
         orm = result.scalar_one_or_none()
         return self._to_domain(orm) if orm else None
 
     async def find_by_buyer(self, buyer_id: int) -> List[Order]:
-        stmt = select(OrderORM).options(selectinload(OrderORM.items)).where(OrderORM.buyer_id == buyer_id).order_by(OrderORM.created_at.desc())
+        stmt = select(OrderORM).options(selectinload(OrderORM.items), selectinload(OrderORM.buyer)).where(OrderORM.buyer_id == buyer_id).order_by(OrderORM.created_at.desc())
         result = await self.session.execute(stmt)
         return [self._to_domain(orm) for orm in result.scalars().all()]
 
     async def find_by_umkm(self, umkm_id: int) -> List[Order]:
-        stmt = select(OrderORM).options(selectinload(OrderORM.items)).where(OrderORM.umkm_id == umkm_id).order_by(OrderORM.created_at.desc())
+        stmt = select(OrderORM).options(selectinload(OrderORM.items), selectinload(OrderORM.buyer)).where(OrderORM.umkm_id == umkm_id).order_by(OrderORM.created_at.desc())
         result = await self.session.execute(stmt)
         return [self._to_domain(orm) for orm in result.scalars().all()]
 

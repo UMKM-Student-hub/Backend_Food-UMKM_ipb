@@ -10,12 +10,16 @@ from app.schemas.promo_schema import PromoResponse
 from app.services.promo_service import PromoService
 from app.repositories.impl.promotion_repository import PromotionRepositoryImpl
 from app.repositories.impl.menu_item_repository import MenuItemRepositoryImpl
-from app.core.exceptions import BusinessRuleViolationError, NotFoundError
+from app.repositories.impl.umkm_repository import UMKMRepositoryImpl
+from app.core.exceptions import BusinessRuleViolationError, NotFoundError, PermissionDeniedError
 
 router = APIRouter(prefix="/promos", tags=["Promotions"])
 
 def get_promo_service(db: AsyncSession = Depends(get_db)) -> PromoService:
-    return PromoService(PromotionRepositoryImpl(db), MenuItemRepositoryImpl(db))
+    promo_repo = PromotionRepositoryImpl(db)
+    menu_repo = MenuItemRepositoryImpl(db)
+    umkm_repo = UMKMRepositoryImpl(db)
+    return PromoService(promo_repo, menu_repo, umkm_repo)
 
 @router.get("/active", response_model=List[PromoResponse])
 async def get_active_promos(service: PromoService = Depends(get_promo_service)):
@@ -27,9 +31,12 @@ async def get_my_promotions(
     seller_payload: dict = Depends(require_seller),
     service: PromoService = Depends(get_promo_service)
 ):
-    owner_id = int(seller_payload.get("sub"))
-    promos = await service.get_promos_by_umkm(owner_id)
-    return [PromoResponse.from_domain(p) for p in promos]
+    try:
+        owner_id = int(seller_payload.get("sub"))
+        promos = await service.get_promos_by_umkm(owner_id)
+        return [PromoResponse.from_domain(p) for p in promos]
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 @router.post("/", response_model=PromoResponse, status_code=status.HTTP_201_CREATED)
 async def create_promotion(
@@ -58,6 +65,8 @@ async def create_promotion(
         return PromoResponse.from_domain(promo)
     except BusinessRuleViolationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
@@ -71,7 +80,7 @@ async def deactivate_promotion(
         owner_id = int(seller_payload.get("sub"))
         promo = await service.deactivate_promo(promo_id=promo_id, owner_id=owner_id)
         return PromoResponse.from_domain(promo)
-    except BusinessRuleViolationError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

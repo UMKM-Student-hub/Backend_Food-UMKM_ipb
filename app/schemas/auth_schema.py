@@ -22,6 +22,7 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
+    phone: Optional[str] = None
     role: UserRole
 
     @staticmethod
@@ -30,6 +31,7 @@ class UserResponse(BaseModel):
             id=user.id,
             name=user.name,
             email=user.email,
+            phone=getattr(user, 'phone', None),
             role=user.role
         )
 

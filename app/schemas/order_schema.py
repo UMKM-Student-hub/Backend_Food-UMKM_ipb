@@ -37,6 +37,7 @@ class OrderItemResponse(BaseModel):
 class OrderResponse(BaseModel):
     id: int
     buyer_id: int
+    buyer_name: Optional[str] = None
     umkm_id: int
     status: OrderStatus
     total_price: Decimal
@@ -54,6 +55,7 @@ class OrderResponse(BaseModel):
         return OrderResponse(
             id=order.id,
             buyer_id=order.buyer_id,
+            buyer_name=getattr(order, 'buyer_name', f"Customer #{order.buyer_id}"),
             umkm_id=order.umkm_id,
             status=order.status,
             total_price=order.total_price,

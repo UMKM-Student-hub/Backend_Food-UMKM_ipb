@@ -18,7 +18,9 @@ class OrderORM(Base):
     payment_method = Column(String(50), nullable=False, default="Bayar Ditempat")
     payment_proof_url = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    
     items = relationship("OrderItemORM", cascade="all, delete-orphan")
+    buyer = relationship("UserORM", foreign_keys=[buyer_id])
 
 class OrderItemORM(Base):
     __tablename__ = "order_items"

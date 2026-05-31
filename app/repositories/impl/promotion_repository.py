@@ -75,11 +75,10 @@ class PromotionRepositoryImpl(IPromotionRepository):
         )
         self.session.add(orm)
         
-        await self.session.flush()
         await self.session.commit()
+        await self.session.refresh(orm)
         
-        promo.id = orm.id
-        return promo
+        return self._to_domain(orm)
 
     async def update(self, promo: Promotion) -> Promotion:
         stmt = select(PromotionORM).where(PromotionORM.id == promo.id)
@@ -97,4 +96,4 @@ class PromotionRepositoryImpl(IPromotionRepository):
             
             await self.session.commit() 
             
-        return promo
+        return self._to_domain(orm)
