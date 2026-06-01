@@ -24,3 +24,4 @@ pytz>=2024.1
 # Image Processing (HEADLESS — wajib untuk server tanpa display)
 numpy==2.1.3
 opencv-python-headless==4.10.0.84
+email-validator==2.2.0
