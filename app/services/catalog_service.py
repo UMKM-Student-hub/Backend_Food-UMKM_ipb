@@ -1,8 +1,14 @@
-import shutil
 import os
-from uuid import uuid4
 from typing import List, Optional
 from fastapi import UploadFile
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+)
 
 from app.domain.umkm import UMKM
 from app.repositories.interfaces.i_menu_item_repository import IMenuItemRepository
@@ -68,16 +74,11 @@ class CatalogService:
         
         photo_url = None
         if photo and photo.filename:
-            file_ext = os.path.splitext(photo.filename)[1]
-            unique_name = f"{uuid4()}{file_ext}"
-            directory = "static/uploads/menus"
-            path = os.path.join(directory, unique_name)
-            
-            os.makedirs(directory, exist_ok=True)
-            with open(path, "wb") as buffer:
-                shutil.copyfileobj(photo.file, buffer)
-            
-            photo_url = f"/{path}"
+            result = cloudinary.uploader.upload(
+                photo.file,
+                folder="unibites/menus"
+            )
+            photo_url = result["secure_url"]
 
         new_item = MenuItem(
             umkm_id=umkm.id, name=name, price=price, 
@@ -96,15 +97,11 @@ class CatalogService:
             raise PermissionDeniedError("Anda tidak memiliki akses.")
 
         if photo and photo.filename:
-            file_ext = os.path.splitext(photo.filename)[1]
-            unique_name = f"{uuid4()}{file_ext}"
-            directory = "static/uploads/menus"
-            path = os.path.join(directory, unique_name)
-            
-            os.makedirs(directory, exist_ok=True)
-            with open(path, "wb") as buffer:
-                shutil.copyfileobj(photo.file, buffer)
-            item.photo_url = f"/{path}"
+            result = cloudinary.uploader.upload(
+                photo.file,
+                folder="unibites/menus"
+            )
+            item.photo_url = result["secure_url"]
 
         item.name = name
         item.price = price
