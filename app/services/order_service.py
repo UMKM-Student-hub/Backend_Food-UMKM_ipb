@@ -4,6 +4,8 @@ import uuid
 from datetime import datetime
 from typing import List
 from fastapi import UploadFile
+import cloudinary
+import cloudinary.uploader
 
 from app.repositories.interfaces.i_order_repository import IOrderRepository
 from app.repositories.interfaces.i_menu_item_repository import IMenuItemRepository
@@ -57,17 +59,11 @@ class OrderService:
 
         proof_url = None
         if payment_proof:
-            upload_dir = "static/uploads/payments"
-            os.makedirs(upload_dir, exist_ok=True)
-
-            ext = payment_proof.filename.split(".")[-1]
-            unique_filename = f"{uuid.uuid4().hex}.{ext}"
-            file_path = os.path.join(upload_dir, unique_filename)
-
-            with open(file_path, "wb") as f:
-                f.write(await payment_proof.read())
-
-            proof_url = f"/{file_path}"
+            result = cloudinary.uploader.upload(
+                await payment_proof.read(),
+                folder="unibites/payments"
+            )
+            proof_url = result["secure_url"]
 
         domain_items = []
         total_price = 0
