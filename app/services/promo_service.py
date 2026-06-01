@@ -5,6 +5,8 @@ from typing import List, Optional
 from datetime import date
 from decimal import Decimal
 from fastapi import UploadFile
+import cloudinary
+import cloudinary.uploader
 
 from app.repositories.interfaces.i_promotion_repository import IPromotionRepository
 from app.repositories.interfaces.i_menu_item_repository import IMenuItemRepository
@@ -55,16 +57,12 @@ class PromoService:
             allowed_exts = {".jpg", ".jpeg", ".png", ".webp"}
             if file_ext not in allowed_exts:
                 raise BusinessRuleViolationError("Format gambar tidak didukung. Gunakan JPG, PNG, atau WEBP.")
-                
-            unique_name = f"{uuid4()}{file_ext}"
-            directory = "static/uploads/promos"
-            path = os.path.join(directory, unique_name)
             
-            os.makedirs(directory, exist_ok=True)
-            with open(path, "wb") as buffer:
-                shutil.copyfileobj(photo.file, buffer)
-            
-            photo_url = f"/{path}".replace("\\", "/")
+            result = cloudinary.uploader.upload(
+                photo.file,
+                folder="unibites/promos"
+            )
+            photo_url = result["secure_url"]
 
         promo = Promotion(
             umkm_id=umkm.id, 
